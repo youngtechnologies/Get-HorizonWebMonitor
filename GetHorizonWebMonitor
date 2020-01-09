@@ -1,0 +1,48 @@
+$SoftwareName = "tools"   #This parameter can be changed to any VIB Software inventory item, for example "NVIDIA"
+$vCenters = @(
+    'vCenter01'
+    'vCenter02'
+    'vCenter03'
+    'vCenter04'
+    'vCenter05'
+    'vCenter06'
+    'vCenter07'
+    'vCenter08'
+)
+
+$GetVISoftwareVersion = {
+        param($vCenter,$SoftwareName)
+	$vcConnection = connect-viserver $vCenter
+	$vmhosts = Get-VMHost | Sort-Object $_.name
+	$returnArray = @()
+	foreach ($vmhost in $vmhosts){
+	        $esxcli = Get-EsxCli –VMHost (Get-VMHost $vmhost) –V2
+	        $itemList = $esxcli.software.vib.list.invoke() | Where-Object {$_.Name -like "*$SoftwareName*"} | select Name,Version
+		$returnObject = New-Object -TypeName PSObject -Property @{
+            		hostname	= 	$vmhost.Name
+            		SoftwareName	=	$itemlist.Name
+			SoftwareVersion	=	$itemlist.Version
+		}
+		$returnArray += $returnObject
+	}
+	$returnArray
+}
+ 
+foreach($vCenter in $vCenters){
+	Start-Job -ScriptBlock $GetVISoftwareVersion -ArgumentList $vCenter,$SoftwareName
+}
+
+While (Get-Job -State "Running") {
+    write-host -NoNewline "."
+    start-sleep 1
+}
+
+$returnArray = Get-Job | Receive-Job #
+
+$Host.UI.RawUI.ForegroundColor = "Green"
+
+Remove-Job *
+
+cls
+
+$returnArray | Select-Object hostname,SoftwareName,SoftwareVersion | Foreach {[PSCustomObject]$_} | Format-Table -AutoSize -Wrap
