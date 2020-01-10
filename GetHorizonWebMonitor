@@ -1,6 +1,6 @@
 $infinite = $true
 While ($infinite -eq $true){
-$TargetDomain = ".youngtech.local"
+$TargetDomain = ".youngtech.com"
 $HorizonCSArray = @(
 	'CS01'
 	'CS02'
@@ -11,10 +11,10 @@ $GetHorizonWebMonitor = {
         param($TargetDomain,$HorizonCS)
 	$web = New-Object Net.WebClient
 	$request = $null
-	$URLtoCheck = "https://" + $HorizonCS + $TargetDomain + "/admin"
+	$URLtoCheck = "https://" + $HorizonCS + $TargetDomain + "/favicon.ico"
 	[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 	try {
-		$result = (Measure-Command { $request = Invoke-WebRequest -Uri $URLtoCheck -UseBasicParsing}).Milliseconds
+		$result = (Measure-Command { $request = Invoke-WebRequest -Uri $URLtoCheck -UseBasicParsing -TimeoutSec 5}).Milliseconds
 	} catch {
 		$result = $_
 	}
@@ -26,7 +26,7 @@ $GetHorizonWebMonitor = {
 }
 
 foreach($HorizonCS in $HorizonCSArray){
-	Start-Job -ScriptBlock $GetHorizonWebMonitor -ArgumentList $TargetDomain,$HorizonCS
+	Start-Job -Name $HorizonCS -ScriptBlock $GetHorizonWebMonitor -ArgumentList $TargetDomain,$HorizonCS
 }
 
 While (Get-Job -State "Running") {
@@ -42,5 +42,6 @@ cls
 
 $returnArray | Select-Object HorizonCS,ResponseTime | Foreach {[PSCustomObject]$_} | Format-Table -AutoSize -Wrap
 
-start-sleep 60
+start-sleep 15
 }
+
