@@ -1,0 +1,47 @@
+$TargetDomain = ".youngtech.com"
+$HorizonCSArray = @(
+	'CS01'
+	'CS02'
+	'CS03'
+)
+
+Function Get-HorizonMonitor([string]$HorizonCS, [string]$TargetDomain){
+$web = New-Object Net.WebClient
+$request = $null
+$URLtoCheck = "https://" + $HorizonCS + $TargetDomain + "/favicon.ico"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try {
+	$result = (Measure-Command { $request = Invoke-WebRequest -Uri $URLtoCheck -UseBasicParsing -TimeoutSec 5}).Milliseconds
+} catch {
+	$result = $_
+}
+	$returnObject = New-Object -TypeName PSObject -Property @{
+		HorizonCS	= 	[string]$HorizonCS
+		ResponseTime 	=	[string]$result
+	}
+	$returnObject
+}
+cls
+
+foreach($HorizonCS in $HorizonCSArray){
+  Write-Host "Initiating reboot using the following command"
+  Write-Host "Shutdown.exe /m $HorizonCS /r /t 0 /c ""Shutdown scheduled by Horizon CS staggered reboot."""
+  Invoke-Expression "Shutdown.exe /m $HorizonCS /r /t 0 /c ""Shutdown scheduled by Horizon CS rolling reboot."""
+  Start-Sleep 30
+  $infinite = $true
+While ($infinite -eq $true){
+
+
+$result = Get-HorizonMonitor $HorizonCS $TargetDomain 
+
+if (($result.ResponseTime -like "*Unable*") -or ($result.ResponseTime -like "*Timed*")){
+ write-host $HorizonCS - $result.ResponseTime
+start-sleep 5
+} else {
+ write-host $HorizonCS "is back online. Moving to the next server in the Horizon Pod! Response time (ms):" $result.ResponseTime
+ start-sleep 15
+    $infinite = $false
+}
+}
+}
+
