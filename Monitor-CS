@@ -1,0 +1,43 @@
+$TargetDomain = ".youngtech.com"
+$HorizonCS = "CS01"
+$LogFolder = "C:\Temp\Logs\"
+
+Function Monitor-CS([string]$HorizonCS, [string]$TargetDomain){
+$web = New-Object Net.WebClient
+$request = $null
+$URLtoCheck = "https://" + $HorizonCS + $TargetDomain + "/favicon.ico"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try {
+	$result = (Measure-Command { $request = Invoke-WebRequest -Uri $URLtoCheck -UseBasicParsing -TimeoutSec 5}).Milliseconds
+} catch {
+	$result = $_
+}
+	$returnObject = New-Object -TypeName PSObject -Property @{
+		HorizonCS	= 	[string]$HorizonCS
+		ResponseTime 	=	[string]$result
+	}
+	$returnObject
+}
+cls
+
+$infinite = $true
+While ($infinite -eq $true){
+$LogFile = ($LogFolder) + ($HorizonCS) + "_" + ((get-date -UFormat %Y_%m_%d)) + ".log"
+
+$result = Monitor-CS $HorizonCS $TargetDomain 
+
+if (($result.ResponseTime -like "*Unable*") -or ($result.ResponseTime -like "*Timed*")){
+  $Host.UI.RawUI.ForegroundColor = "Red"
+  [string]$out = ($HorizonCS) + " - " + (get-date -DisplayHint DateTime) + " - " + ($result.ResponseTime)
+  write-host $out
+  $out | out-file -append $LogFile
+  start-sleep 5
+} else {
+  $Host.UI.RawUI.ForegroundColor = "White"
+  [string]$out = ($HorizonCS) + " - " + (get-date -DisplayHint DateTime) + " - " + ($result.ResponseTime)
+  write-host $out
+  $out | out-file -append $LogFile
+  start-sleep 5
+}
+}
+
