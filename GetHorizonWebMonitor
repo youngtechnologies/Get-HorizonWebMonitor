@@ -1,3 +1,6 @@
+$LogFolder = "C:\Temp\Logs\"
+$LogFilePrefix = "Monitor_CS711"
+
 $infinite = $true
 While ($infinite -eq $true){
 $TargetDomain = ".youngtech.com"
@@ -5,6 +8,7 @@ $HorizonCSArray = @(
 	'CS01'
 	'CS02'
 	'CS03'
+	'CS04'
 )
 
 $GetHorizonWebMonitor = {
@@ -40,7 +44,12 @@ Remove-Job *
 
 cls
 
-$returnArray | Select-Object HorizonCS,ResponseTime | Foreach {[PSCustomObject]$_} | Format-Table -AutoSize -Wrap
+$LogFile = ($LogFolder) + ($LogFilePrefix) + "_" + ((get-date -UFormat %Y_%m_%d)) + ".log"
+[string]$out = (get-date -DisplayHint DateTime)
+[string]$out += ($returnArray | Select-Object HorizonCS,ResponseTime | Foreach {[PSCustomObject]$_} | Format-Table -AutoSize -Wrap | Out-String)
+
+write-host $out
+$out | out-file -append $LogFile
 
 start-sleep 15
 }
